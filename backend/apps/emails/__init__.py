@@ -1,0 +1,1 @@
+# Emails app - Collector Agent
