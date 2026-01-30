@@ -1,23 +1,48 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, FileText, Layers, PenTool, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function DashboardPage() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const { data: stats, isLoading } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
       // Fetch counts from various endpoints
       const [emails, articles, clusters, posts] = await Promise.all([
-        api.get("/emails/").then((r) => r.count || 0).catch(() => 0),
-        api.get("/articles/").then((r) => r.count || 0).catch(() => 0),
-        api.get("/clusters/").then((r) => r.count || 0).catch(() => 0),
-        api.get("/posts/").then((r) => r.count || 0).catch(() => 0),
+        api.get("/emails/").then((r: any) => r.count || 0).catch(() => 0),
+        api.get("/articles/").then((r: any) => r.count || 0).catch(() => 0),
+        api.get("/clusters/").then((r: any) => r.count || 0).catch(() => 0),
+        api.get("/posts/").then((r: any) => r.count || 0).catch(() => 0),
       ]);
       return { emails, articles, clusters, posts };
+    },
+  });
+
+  const syncEmails = useMutation({
+    mutationFn: () => api.post("/emails/sync/"),
+    onSuccess: (data: any) => {
+      toast({
+        title: "Email sync started",
+        description: data.task_id ? `Task ID: ${data.task_id}` : "Syncing emails in background...",
+      });
+      // Refresh stats after a delay to allow processing
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      }, 5000);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Sync failed",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -52,9 +77,14 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Overview</h2>
-        <Button variant="outline" size="sm">
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Sync Emails
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => syncEmails.mutate()}
+          disabled={syncEmails.isPending}
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${syncEmails.isPending ? "animate-spin" : ""}`} />
+          {syncEmails.isPending ? "Syncing..." : "Sync Emails"}
         </Button>
       </div>
 

@@ -20,6 +20,7 @@ google-cloud-aiplatform>=1.40,<2.0
 google-auth>=2.25,<3.0
 google-auth-oauthlib>=1.2,<2.0
 google-api-python-client>=2.111,<3.0
+google-genai>=1.0,<2.0
 
 # Web scraping
 playwright>=1.40,<2.0

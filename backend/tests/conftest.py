@@ -3,9 +3,26 @@ Pytest fixtures for testing.
 """
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import connection
 from rest_framework.test import APIClient
 
 User = get_user_model()
+
+
+@pytest.fixture(scope="session")
+def django_db_setup(django_db_blocker):
+    """Set up test database with pgvector extension."""
+    from django.conf import settings
+    from django.test.utils import setup_test_environment, teardown_test_environment
+
+    with django_db_blocker.unblock():
+        # Create pgvector extension
+        with connection.cursor() as cursor:
+            cursor.execute("CREATE EXTENSION IF NOT EXISTS vector")
+
+        # Run migrations
+        from django.core.management import call_command
+        call_command('migrate', '--run-syncdb', verbosity=0)
 
 
 @pytest.fixture

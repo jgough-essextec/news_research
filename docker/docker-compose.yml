@@ -48,6 +48,10 @@ services:
       - DJANGO_SETTINGS_MODULE=config.settings.local
       - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-}
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GENERATION_MODEL=${GENERATION_MODEL:-gemini-2.5-flash}
+      - IMAGE_GENERATION_MODEL=${IMAGE_GENERATION_MODEL:-gemini-2.5-flash-image}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-004}
       - OAUTHLIB_INSECURE_TRANSPORT=1
     depends_on:
       db:
@@ -72,6 +76,10 @@ services:
       - DJANGO_SETTINGS_MODULE=config.settings.local
       - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-}
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GENERATION_MODEL=${GENERATION_MODEL:-gemini-2.5-flash}
+      - IMAGE_GENERATION_MODEL=${IMAGE_GENERATION_MODEL:-gemini-2.5-flash-image}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-004}
     depends_on:
       db:
         condition: service_healthy
@@ -93,6 +101,11 @@ services:
       - DATABASE_URL=postgresql://ai_news_user:ai_news_password@db:5432/ai_news
       - REDIS_URL=redis://redis:6379/0
       - DJANGO_SETTINGS_MODULE=config.settings.local
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GENERATION_MODEL=${GENERATION_MODEL:-gemini-2.5-flash}
+      - IMAGE_GENERATION_MODEL=${IMAGE_GENERATION_MODEL:-gemini-2.5-flash-image}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-004}
     depends_on:
       db:
         condition: service_healthy

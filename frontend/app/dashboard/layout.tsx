@@ -26,10 +26,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Emails", href: "/dashboard/emails", icon: Mail },
-  { name: "Articles", href: "/articles", icon: FileText },
-  { name: "Clusters", href: "/clusters", icon: Layers },
-  { name: "Posts", href: "/posts", icon: PenTool },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Articles", href: "/dashboard/articles", icon: FileText },
+  { name: "Clusters", href: "/dashboard/clusters", icon: Layers },
+  { name: "Posts", href: "/dashboard/posts", icon: PenTool },
+  { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 export default function DashboardLayout({
@@ -92,7 +92,7 @@ export default function DashboardLayout({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href="/settings">
+                <Link href="/dashboard/settings">
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </Link>

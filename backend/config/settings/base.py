@@ -150,6 +150,9 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 GOOGLE_CLOUD_PROJECT = os.environ.get('GOOGLE_CLOUD_PROJECT', '')
 VERTEX_AI_LOCATION = os.environ.get('VERTEX_AI_LOCATION', 'us-central1')
 
+# Google AI API Key (for API key authentication mode)
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY', '')
+
 # Gmail API settings
 GMAIL_SCOPES = [
     'https://www.googleapis.com/auth/gmail.readonly',
@@ -158,7 +161,7 @@ GMAIL_SCOPES = [
 GMAIL_NEWSLETTER_LABEL = os.environ.get('GMAIL_NEWSLETTER_LABEL', 'AI-News')
 
 # Embedding settings
-EMBEDDING_MODEL = 'text-embedding-004'
+EMBEDDING_MODEL = os.environ.get('EMBEDDING_MODEL', 'text-embedding-004')
 EMBEDDING_DIMENSIONS = 768
 
 # Deduplication thresholds
@@ -166,8 +169,8 @@ DUPLICATE_THRESHOLD = 0.95  # Same article
 CLUSTER_THRESHOLD = 0.85   # Same topic
 
 # Generation settings
-GENERATION_MODEL = 'gemini-1.5-pro'
-IMAGE_GENERATION_MODEL = 'imagen-3.0-generate-001'
+GENERATION_MODEL = os.environ.get('GENERATION_MODEL', 'gemini-2.5-flash')
+IMAGE_GENERATION_MODEL = os.environ.get('IMAGE_GENERATION_MODEL', 'gemini-2.5-flash-image')
 
 # Encryption key for storing OAuth tokens
 ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', '')

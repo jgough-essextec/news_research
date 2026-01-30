@@ -111,7 +111,11 @@ class BlogPostListSerializer(serializers.ModelSerializer):
 
     def get_header_image(self, obj):
         header = obj.images.filter(image_type='header').first()
-        if header:
+        if header and header.image_url:
+            request = self.context.get('request')
+            # If image_url is relative, build absolute URL
+            if header.image_url.startswith('/') and request:
+                return request.build_absolute_uri(header.image_url)
             return header.image_url
         return None
 
@@ -119,6 +123,7 @@ class BlogPostListSerializer(serializers.ModelSerializer):
 class BlogPostDetailSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source='created_by.name', read_only=True)
     cluster_name = serializers.CharField(source='source_cluster.name', read_only=True, allow_null=True)
+    header_image = serializers.SerializerMethodField()
     images = GeneratedImageSerializer(many=True, read_only=True)
     source_articles = ArticleListSerializer(many=True, read_only=True)
 
@@ -128,10 +133,20 @@ class BlogPostDetailSerializer(serializers.ModelSerializer):
             'id', 'title', 'slug', 'content_markdown', 'content_html',
             'excerpt', 'status', 'created_by', 'author_name',
             'source_cluster', 'cluster_name', 'source_articles', 'images',
-            'generation_prompt', 'generation_model', 'meta_title',
+            'header_image', 'generation_prompt', 'generation_model', 'meta_title',
             'meta_description', 'published_at', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'generation_model', 'created_at', 'updated_at']
+
+    def get_header_image(self, obj):
+        header = obj.images.filter(image_type='header').first()
+        if header and header.image_url:
+            request = self.context.get('request')
+            # If image_url is relative, build absolute URL
+            if header.image_url.startswith('/') and request:
+                return request.build_absolute_uri(header.image_url)
+            return header.image_url
+        return None
 
 
 class GenerationJobSerializer(serializers.ModelSerializer):

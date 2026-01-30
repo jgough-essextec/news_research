@@ -218,6 +218,9 @@ class GmailService:
             )
 
             if created:
+                # Validate link on creation
+                link.is_valid_article = self._is_valid_article(canonical_url)
+                link.save(update_fields=['is_valid_article'])
                 links.append(link)
 
         # Update email link count
@@ -267,3 +270,75 @@ class GmailService:
         if parent:
             return parent.get_text(strip=True)[:500]
         return ''
+
+    def _is_valid_article(self, url: str) -> bool:
+        """
+        Determine if a URL is likely to be a valid article.
+
+        Checks for:
+        - Sufficient path depth
+        - Article-like URL patterns
+        - Not a homepage or category page
+        - Not a media file
+        """
+        try:
+            parsed = urlparse(url.lower())
+        except Exception:
+            return False
+
+        path = parsed.path
+
+        # Skip empty or root paths
+        if path in ['/', ''] or len(path) < 10:
+            return False
+
+        # Skip media files
+        media_extensions = ['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.mp4', '.mp3', '.webp', '.svg']
+        if any(path.endswith(ext) for ext in media_extensions):
+            return False
+
+        # Skip common non-article paths
+        skip_patterns = [
+            '/category/', '/categories/', '/tag/', '/tags/',
+            '/author/', '/authors/', '/about/', '/contact/',
+            '/login/', '/signup/', '/register/', '/subscribe/',
+            '/search/', '/feed/', '/rss/', '/sitemap',
+            '/privacy/', '/terms/', '/legal/',
+        ]
+        if any(pattern in path for pattern in skip_patterns):
+            return False
+
+        # Check for article-like URL patterns
+        article_indicators = [
+            '/article/', '/articles/',
+            '/post/', '/posts/',
+            '/blog/', '/blogs/',
+            '/news/',
+            '/story/', '/stories/',
+            '/p/',  # Substack, Medium
+            '/entry/',
+            '/research/',
+            '/insights/',
+            '/opinion/',
+            '/analysis/',
+        ]
+
+        # URL contains article indicator
+        if any(indicator in path for indicator in article_indicators):
+            return True
+
+        # URL has date pattern like /2024/01/ or /2024-01-15/
+        if re.search(r'/\d{4}/\d{2}/', path) or re.search(r'/\d{4}-\d{2}-\d{2}/', path):
+            return True
+
+        # URL has sufficient path depth (at least 3 segments)
+        segments = [s for s in path.split('/') if s]
+        if len(segments) >= 3:
+            return True
+
+        # URL ends with a slug-like pattern (letters/numbers with hyphens)
+        last_segment = segments[-1] if segments else ''
+        if re.match(r'^[a-z0-9]+-[a-z0-9-]+[a-z0-9]$', last_segment) and len(last_segment) > 20:
+            return True
+
+        return False

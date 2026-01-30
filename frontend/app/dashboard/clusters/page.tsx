@@ -80,7 +80,7 @@ export default function ClustersPage() {
                   )}
 
                   <div className="mt-auto flex gap-2">
-                    <Link href={`/clusters/${cluster.id}`} className="flex-1">
+                    <Link href={`/dashboard/clusters/${cluster.id}`} className="flex-1">
                       <Button variant="outline" className="w-full" size="sm">
                         View Details
                       </Button>

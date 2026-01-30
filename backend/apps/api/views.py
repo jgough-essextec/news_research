@@ -153,6 +153,26 @@ class ArticleViewSet(viewsets.ReadOnlyModelViewSet):
         task = scrape_article.delay(article.id)
         return Response({'task_id': task.id, 'status': 'started'})
 
+    @action(detail=False, methods=['post'])
+    def process_pending(self, request):
+        """Process all pending articles by triggering scrape tasks."""
+        from apps.articles.tasks import scrape_pending_articles
+
+        pending_count = Article.objects.filter(
+            scrape_status=Article.ScrapeStatus.PENDING,
+            scrape_attempts__lt=3
+        ).count()
+
+        if pending_count == 0:
+            return Response({'status': 'no_pending', 'message': 'No pending articles'})
+
+        task = scrape_pending_articles.delay()
+        return Response({
+            'task_id': task.id,
+            'status': 'started',
+            'pending_count': pending_count
+        })
+
     @action(detail=False, methods=['get'])
     def similar(self, request):
         """Find similar articles to a given article."""
@@ -223,6 +243,56 @@ class ClusterViewSet(viewsets.ModelViewSet):
         task = generate_cluster_summary.delay(cluster.id)
         return Response({'task_id': task.id, 'status': 'started'})
 
+    @action(detail=True, methods=['post'])
+    def generate_post(self, request, pk=None):
+        """Generate a blog post from this cluster."""
+        from django.utils.text import slugify
+        from apps.generation.tasks import generate_blog_post
+
+        cluster = self.get_object()
+        if cluster.article_count < 2:
+            return Response(
+                {'error': 'Need at least 2 articles to generate a post'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get the user (for development, use first user if not authenticated)
+        if request.user.is_authenticated:
+            user = request.user
+        else:
+            from django.conf import settings
+            if settings.DEBUG:
+                user = User.objects.first()
+                if not user:
+                    return Response(
+                        {'error': 'No users exist. Create a user first.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                return Response(
+                    {'error': 'Authentication required'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
+        # Create draft blog post
+        import uuid
+        post = BlogPost.objects.create(
+            title=f"Draft: {cluster.name}",
+            slug=slugify(f"{cluster.name}-{uuid.uuid4().hex[:8]}"),
+            source_cluster=cluster,
+            created_by=user,
+            status=BlogPost.Status.DRAFT,
+        )
+
+        prompt = request.data.get('prompt', '')
+        task = generate_blog_post.delay(user.id, cluster.id, prompt)
+
+        return Response({
+            'task_id': task.id,
+            'post_id': post.id,
+            'status': 'started'
+        })
+
 
 class BlogPostViewSet(viewsets.ModelViewSet):
     """ViewSet for blog posts (user-owned)."""
@@ -234,10 +304,14 @@ class BlogPostViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if not self.request.user.is_authenticated:
-            return BlogPost.objects.all().select_related('source_cluster', 'created_by')
+            return BlogPost.objects.all().select_related(
+                'source_cluster', 'created_by'
+            ).prefetch_related('images')
         return BlogPost.objects.filter(
             created_by=self.request.user
-        ).select_related('source_cluster', 'created_by')
+        ).select_related(
+            'source_cluster', 'created_by'
+        ).prefetch_related('images')
 
     def get_serializer_class(self):
         if self.action in ['retrieve', 'create', 'update', 'partial_update']:

@@ -1,5 +1,6 @@
 """
 Content generation service using Gemini and Imagen.
+Supports both API key and Vertex AI authentication modes.
 """
 import logging
 from typing import Optional
@@ -12,19 +13,32 @@ from apps.articles.models import Article
 from apps.clusters.models import TopicCluster
 from apps.core.models import User
 from apps.generation.models import BlogPost, GeneratedImage, GenerationJob
+from services.google_ai_client import use_api_key
 
 logger = logging.getLogger(__name__)
 
 
 class GenerationService:
-    """Service for generating content using Vertex AI."""
+    """Service for generating content using Google AI."""
 
     def __init__(self):
         self._model = None
         self._image_model = None
+        self._genai_client = None
+
+    def _use_api_key(self) -> bool:
+        """Check if API key authentication should be used."""
+        return use_api_key()
+
+    def _get_genai_client(self):
+        """Get or create Google GenAI client for API key mode."""
+        if self._genai_client is None:
+            from google import genai
+            self._genai_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        return self._genai_client
 
     def _get_model(self):
-        """Get or create Gemini model."""
+        """Get or create Gemini model for Vertex AI mode."""
         if self._model is None:
             from google.cloud import aiplatform
             from vertexai.generative_models import GenerativeModel
@@ -39,7 +53,7 @@ class GenerationService:
         return self._model
 
     def _get_image_model(self):
-        """Get or create Imagen model."""
+        """Get or create Imagen model for Vertex AI mode."""
         if self._image_model is None:
             from google.cloud import aiplatform
             from vertexai.preview.vision_models import ImageGenerationModel
@@ -54,6 +68,92 @@ class GenerationService:
             )
 
         return self._image_model
+
+    def _generate_text(self, prompt: str) -> Optional[str]:
+        """Generate text using the appropriate authentication mode."""
+        if self._use_api_key():
+            return self._generate_text_api_key(prompt)
+        else:
+            return self._generate_text_vertex(prompt)
+
+    def _generate_text_api_key(self, prompt: str) -> Optional[str]:
+        """Generate text using Google GenAI API key authentication."""
+        try:
+            client = self._get_genai_client()
+            response = client.models.generate_content(
+                model=settings.GENERATION_MODEL,
+                contents=prompt
+            )
+            return response.text
+        except Exception as e:
+            logger.error(f'Error generating text with API key: {e}')
+            return None
+
+    def _generate_text_vertex(self, prompt: str) -> Optional[str]:
+        """Generate text using Vertex AI authentication."""
+        try:
+            model = self._get_model()
+            response = model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            logger.error(f'Error generating text with Vertex AI: {e}')
+            return None
+
+    def _generate_image_bytes(self, prompt: str) -> Optional[bytes]:
+        """Generate image bytes using the appropriate authentication mode."""
+        if self._use_api_key():
+            return self._generate_image_api_key(prompt)
+        else:
+            return self._generate_image_vertex(prompt)
+
+    def _generate_image_api_key(self, prompt: str) -> Optional[bytes]:
+        """Generate image using Google GenAI API key authentication."""
+        try:
+            from google.genai import types
+
+            client = self._get_genai_client()
+            response = client.models.generate_content(
+                model=settings.IMAGE_GENERATION_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_modalities=['IMAGE']
+                )
+            )
+
+            # Extract image bytes from response
+            if response.candidates and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'inline_data') and part.inline_data:
+                        return part.inline_data.data
+
+            logger.warning('No image data in API response')
+            return None
+        except Exception as e:
+            logger.error(f'Error generating image with API key: {e}')
+            return None
+
+    def _generate_image_vertex(self, prompt: str) -> Optional[bytes]:
+        """Generate image using Vertex AI Imagen."""
+        try:
+            import base64
+            model = self._get_image_model()
+
+            response = model.generate_images(
+                prompt=prompt,
+                number_of_images=1,
+                aspect_ratio='16:9',
+                safety_filter_level='block_some',
+            )
+
+            if not response.images:
+                logger.warning('No images generated by Vertex AI')
+                return None
+
+            image = response.images[0]
+            return base64.b64decode(image._image_bytes)
+        except Exception as e:
+            logger.error(f'Error generating image with Vertex AI: {e}')
+            return None
 
     def generate_cluster_summary(self, cluster: TopicCluster) -> Optional[str]:
         """Generate a summary for a topic cluster."""
@@ -90,15 +190,14 @@ Provide a comprehensive 2-3 paragraph summary that:
 Write in a professional, journalistic style."""
 
         try:
-            model = self._get_model()
-            response = model.generate_content(prompt)
+            summary = self._generate_text(prompt)
 
-            summary = response.text
-            cluster.master_summary = summary
-            cluster.summary_generated_at = timezone.now()
-            cluster.save(update_fields=['master_summary', 'summary_generated_at'])
+            if summary:
+                cluster.master_summary = summary
+                cluster.summary_generated_at = timezone.now()
+                cluster.save(update_fields=['master_summary', 'summary_generated_at'])
+                logger.info(f'Generated summary for cluster: {cluster.name}')
 
-            logger.info(f'Generated summary for cluster: {cluster.name}')
             return summary
 
         except Exception as e:
@@ -159,11 +258,13 @@ CONTENT:
 """
 
         try:
-            model = self._get_model()
-            response = model.generate_content(base_prompt)
+            text = self._generate_text(base_prompt)
+
+            if not text:
+                logger.error('No text generated for blog post')
+                return None
 
             # Parse the response
-            text = response.text
             title, excerpt, content = self._parse_blog_response(text)
 
             # Generate slug
@@ -254,30 +355,19 @@ The image should:
 - Be visually striking and attention-grabbing"""
 
         try:
-            model = self._get_image_model()
+            image_bytes = self._generate_image_bytes(base_prompt)
 
-            response = model.generate_images(
-                prompt=base_prompt,
-                number_of_images=1,
-                aspect_ratio='16:9',
-                safety_filter_level='block_some',
-            )
-
-            if not response.images:
-                logger.warning('No images generated')
+            if not image_bytes:
+                logger.warning('No image bytes generated')
                 return None
 
-            image = response.images[0]
-
             # Save image to storage
-            import base64
             import uuid
 
             from django.core.files.base import ContentFile
             from django.core.files.storage import default_storage
 
             filename = f'generated/{blog_post.id}/{uuid.uuid4()}.png'
-            image_bytes = base64.b64decode(image._image_bytes)
             path = default_storage.save(filename, ContentFile(image_bytes))
 
             # Create GeneratedImage record

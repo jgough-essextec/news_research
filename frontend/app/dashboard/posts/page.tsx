@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { PenTool, Plus, Eye, Edit } from "lucide-react";
 import { api, BlogPost, PaginatedResponse } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
 
 export default function PostsPage() {
   const [page, setPage] = useState(1);
@@ -30,7 +29,7 @@ export default function PostsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Blog Posts</h2>
-        <Link href="/posts/new">
+        <Link href="/dashboard/posts/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             Generate Post
@@ -85,13 +84,13 @@ export default function PostsPage() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Link href={`/posts/${post.id}`}>
+                      <Link href={`/dashboard/posts/${post.id}`}>
                         <Button variant="outline" size="sm">
                           <Eye className="mr-2 h-4 w-4" />
                           View
                         </Button>
                       </Link>
-                      <Link href={`/posts/${post.id}/edit`}>
+                      <Link href={`/dashboard/posts/${post.id}/edit`}>
                         <Button variant="outline" size="sm">
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
@@ -111,7 +110,7 @@ export default function PostsPage() {
                   <p className="mb-4 text-sm text-muted-foreground">
                     Generate your first blog post from a topic cluster
                   </p>
-                  <Link href="/posts/new">
+                  <Link href="/dashboard/posts/new">
                     <Button>
                       <Plus className="mr-2 h-4 w-4" />
                       Generate Post

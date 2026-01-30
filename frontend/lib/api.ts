@@ -110,6 +110,16 @@ export interface Article {
   created_at: string;
 }
 
+// Extended article interface with full content for detail view
+export interface ArticleDetail extends Article {
+  content_text: string;
+  content_html: string;
+  summary: string;
+  embedding_status: string;
+  scraped_at: string | null;
+  updated_at: string;
+}
+
 export interface TopicCluster {
   id: number;
   name: string;

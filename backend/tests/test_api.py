@@ -11,9 +11,10 @@ class TestArticleAPI:
     """Tests for the Article API."""
 
     def test_list_articles_unauthenticated(self, api_client):
-        """Unauthenticated users cannot access articles."""
+        """Unauthenticated users can access articles (public read-only)."""
         response = api_client.get('/api/articles/')
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        # Articles endpoint is publicly accessible for read-only
+        assert response.status_code == status.HTTP_200_OK
 
     def test_list_articles_authenticated(self, authenticated_client):
         """Authenticated users can list articles."""
