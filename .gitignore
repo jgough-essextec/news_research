@@ -78,3 +78,7 @@ celerybeat.pid
 .coverage
 coverage.xml
 *.cover
+
+# Test output
+test-results/
+playwright-report/
