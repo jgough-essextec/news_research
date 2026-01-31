@@ -21,6 +21,8 @@ def scrape_article(self, article_id: int):
         if success:
             # Queue embedding generation
             generate_article_embedding.delay(article_id)
+            # Queue summary generation
+            generate_article_summary.delay(article_id)
 
     except Exception as e:
         logger.error(f'Error scraping article {article_id}: {e}')
@@ -105,3 +107,44 @@ def generate_missing_embeddings():
 
     if articles:
         logger.info(f'Queued {articles.count()} articles for embedding generation')
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=60)
+def generate_article_summary(self, article_id: int) -> str:
+    """Generate AI summary for an article."""
+    from services.generation_service import GenerationService
+
+    try:
+        article = Article.objects.get(id=article_id)
+    except Article.DoesNotExist:
+        logger.error(f'Article {article_id} not found')
+        return "Article not found"
+
+    if not article.content_text:
+        logger.warning(f'Article {article_id} has no content to summarize')
+        return "No content to summarize"
+
+    try:
+        service = GenerationService()
+        prompt = f"""Summarize this article in 2-3 sentences.
+Focus on the key takeaway and why it matters.
+Be concise and factual.
+
+Title: {article.title}
+Content:
+{article.content_text[:6000]}"""
+
+        summary = service._generate_text(prompt)
+
+        if summary:
+            article.summary = summary
+            article.save(update_fields=['summary'])
+            logger.info(f'Generated summary for article {article_id}: {article.title}')
+            return summary
+
+        logger.warning(f'Failed to generate summary for article {article_id}')
+        return "Failed to generate"
+
+    except Exception as e:
+        logger.error(f'Error generating summary for article {article_id}: {e}')
+        self.retry(exc=e)

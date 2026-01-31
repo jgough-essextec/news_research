@@ -107,10 +107,61 @@ class EmailViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['post'])
     def generate_summary(self, request, pk=None):
         """Generate AI summary for a single email."""
+        from bs4 import BeautifulSoup
+        from services.generation_service import GenerationService
+
         email = self.get_object()
-        from apps.emails.tasks import generate_email_summary
-        generate_email_summary.delay(email.id)
-        return Response({'status': 'Summary generation started'})
+
+        if not email.raw_html:
+            return Response(
+                {'error': 'No email content to summarize'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Strip HTML to plain text
+        text = BeautifulSoup(email.raw_html, 'html.parser').get_text()
+
+        try:
+            service = GenerationService()
+            prompt = f"""Create a concise summary of this newsletter.
+
+Format:
+**Headline** (5-10 words capturing the main theme)
+
+• Bullet 1 (key point, max 15 words)
+• Bullet 2
+• Bullet 3 (3-5 bullets total)
+
+Rules:
+- No preamble ("Here is a summary", "This newsletter covers")
+- No filler phrases ("The newsletter provides", "Readers will learn")
+- Start bullets with action verbs or key nouns
+- Facts only, no commentary
+
+Email:
+{text[:8000]}"""
+
+            summary = service._generate_text(prompt)
+
+            if not summary:
+                return Response(
+                    {'error': 'Failed to generate summary - AI service returned empty response'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            email.ai_summary = summary
+            email.save(update_fields=['ai_summary'])
+
+            return Response({
+                'status': 'success',
+                'ai_summary': summary
+            })
+
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to generate summary: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class ExtractedLinkViewSet(viewsets.ReadOnlyModelViewSet):
@@ -165,6 +216,15 @@ class ArticleViewSet(viewsets.ReadOnlyModelViewSet):
 
         article = self.get_object()
         task = scrape_article.delay(article.id)
+        return Response({'task_id': task.id, 'status': 'started'})
+
+    @action(detail=True, methods=['post'])
+    def generate_summary(self, request, pk=None):
+        """Generate AI summary for an article."""
+        from apps.articles.tasks import generate_article_summary
+
+        article = self.get_object()
+        task = generate_article_summary.delay(article.id)
         return Response({'task_id': task.id, 'status': 'started'})
 
     @action(detail=False, methods=['post'])
@@ -244,7 +304,14 @@ class ClusterViewSet(viewsets.ModelViewSet):
     def articles(self, request, pk=None):
         """Get articles in this cluster."""
         cluster = self.get_object()
-        articles = cluster.articles.all()
+        articles = cluster.articles.all().order_by('-publication_date')
+
+        # Use the viewset's paginator for consistency with other list endpoints
+        page = self.paginate_queryset(articles)
+        if page is not None:
+            serializer = ArticleListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
         serializer = ArticleListSerializer(articles, many=True)
         return Response(serializer.data)
 

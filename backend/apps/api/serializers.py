@@ -78,7 +78,7 @@ class ArticleListSerializer(serializers.ModelSerializer):
         model = Article
         fields = [
             'id', 'canonical_url', 'title', 'author', 'publication',
-            'publication_date', 'excerpt', 'word_count', 'scrape_status',
+            'publication_date', 'excerpt', 'summary', 'word_count', 'scrape_status',
             'topic_cluster', 'cluster_name', 'og_image', 'created_at'
         ]
 
