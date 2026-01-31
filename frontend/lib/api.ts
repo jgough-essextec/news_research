@@ -88,10 +88,30 @@ export interface NewsletterEmail {
   subject: string;
   received_date: string;
   snippet: string;
+  ai_summary: string;
   is_processed: boolean;
   processed_at: string | null;
   link_count: number;
   created_at: string;
+}
+
+export interface ExtractedLink {
+  id: number;
+  raw_url: string;
+  canonical_url: string;
+  anchor_text: string;
+  surrounding_text: string;
+  status: string;
+  is_valid_article: boolean;
+  article: number | null;
+  article_title: string | null;
+  article_scrape_status: string | null;
+  created_at: string;
+}
+
+export interface NewsletterEmailDetail extends NewsletterEmail {
+  raw_html: string;
+  extracted_links: ExtractedLink[];
 }
 
 export interface Article {

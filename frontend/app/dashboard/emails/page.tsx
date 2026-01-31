@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Mail, RefreshCw, ExternalLink, Check, Clock, X } from "lucide-react";
 import { api, NewsletterEmail, PaginatedResponse } from "@/lib/api";
@@ -68,43 +69,52 @@ export default function EmailsPage() {
         <>
           <div className="grid gap-4">
             {data?.results?.map((email) => (
-              <Card key={email.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <CardTitle className="text-base line-clamp-1">
-                          {email.subject}
-                        </CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          From: {email.sender_name || email.sender_email}
-                        </p>
+              <Link key={email.id} href={`/dashboard/emails/${email.id}`}>
+                <Card className="hover:border-primary transition-colors cursor-pointer">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <Mail className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <CardTitle className="text-base line-clamp-1">
+                            {email.subject}
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            From: {email.sender_name || email.sender_email}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {statusIcon(email)}
+                        <span className="text-xs text-muted-foreground">
+                          {email.is_processed ? "Processed" : "Pending"}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {statusIcon(email)}
-                      <span className="text-xs text-muted-foreground">
-                        {email.is_processed ? "Processed" : "Pending"}
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                      {email.snippet}
+                    </p>
+                    {email.ai_summary && (
+                      <div className="mt-2 text-sm text-muted-foreground">
+                        <div className="whitespace-pre-line line-clamp-3">
+                          {email.ai_summary}
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+                      <span>
+                        Received: {new Date(email.received_date).toLocaleString()}
+                      </span>
+                      <span>
+                        {email.link_count} link{email.link_count !== 1 ? "s" : ""}{" "}
+                        extracted
                       </span>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                    {email.snippet}
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      Received: {new Date(email.received_date).toLocaleString()}
-                    </span>
-                    <span>
-                      {email.link_count} link{email.link_count !== 1 ? "s" : ""}{" "}
-                      extracted
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
 
             {(!data?.results || data.results.length === 0) && (

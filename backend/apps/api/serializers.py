@@ -24,10 +24,38 @@ class NewsletterEmailSerializer(serializers.ModelSerializer):
         model = NewsletterEmail
         fields = [
             'id', 'gmail_message_id', 'sender_email', 'sender_name',
-            'subject', 'received_date', 'snippet', 'is_processed',
+            'subject', 'received_date', 'snippet', 'ai_summary', 'is_processed',
             'processed_at', 'link_count', 'created_at'
         ]
         read_only_fields = ['id', 'gmail_message_id', 'processed_at', 'link_count', 'created_at']
+
+
+class ExtractedLinkWithArticleSerializer(serializers.ModelSerializer):
+    """Extended serializer for extracted links with article details."""
+    article_title = serializers.CharField(source='article.title', read_only=True, allow_null=True)
+    article_scrape_status = serializers.CharField(source='article.scrape_status', read_only=True, allow_null=True)
+
+    class Meta:
+        model = ExtractedLink
+        fields = [
+            'id', 'raw_url', 'canonical_url', 'anchor_text', 'surrounding_text',
+            'status', 'is_valid_article', 'article', 'article_title', 'article_scrape_status',
+            'created_at'
+        ]
+
+
+class NewsletterEmailDetailSerializer(serializers.ModelSerializer):
+    """Full email details including body and extracted links."""
+    link_count = serializers.IntegerField(read_only=True)
+    extracted_links = ExtractedLinkWithArticleSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = NewsletterEmail
+        fields = [
+            'id', 'gmail_message_id', 'sender_email', 'sender_name',
+            'subject', 'received_date', 'snippet', 'raw_html', 'ai_summary',
+            'is_processed', 'processed_at', 'link_count', 'extracted_links', 'created_at'
+        ]
 
 
 class ExtractedLinkSerializer(serializers.ModelSerializer):

@@ -19,6 +19,7 @@ from .serializers import (
     BlogPostListSerializer,
     ExtractedLinkSerializer,
     GenerationJobSerializer,
+    NewsletterEmailDetailSerializer,
     NewsletterEmailSerializer,
     TopicClusterSerializer,
     UserSerializer,
@@ -54,16 +55,21 @@ class NewsletterEmailFilter(filters.FilterSet):
 class EmailViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for newsletter emails."""
 
-    serializer_class = NewsletterEmailSerializer
     # permission_classes inherited from settings
     filterset_class = NewsletterEmailFilter
     search_fields = ['subject', 'sender_name', 'sender_email']
     ordering_fields = ['received_date', 'created_at']
 
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return NewsletterEmailDetailSerializer
+        return NewsletterEmailSerializer
+
     def get_queryset(self):
-        if not self.request.user.is_authenticated:
-            return NewsletterEmail.objects.all()  # For dev, return all
-        return NewsletterEmail.objects.filter(user=self.request.user)
+        qs = NewsletterEmail.objects.all() if not self.request.user.is_authenticated else NewsletterEmail.objects.filter(user=self.request.user)
+        if self.action == 'retrieve':
+            return qs.prefetch_related('extracted_links__article')
+        return qs
 
     @action(detail=False, methods=['post'])
     def sync(self, request):
@@ -97,6 +103,14 @@ class EmailViewSet(viewsets.ReadOnlyModelViewSet):
 
         task = fetch_emails_for_user.delay(user.id)
         return Response({'task_id': task.id, 'status': 'started'})
+
+    @action(detail=True, methods=['post'])
+    def generate_summary(self, request, pk=None):
+        """Generate AI summary for a single email."""
+        email = self.get_object()
+        from apps.emails.tasks import generate_email_summary
+        generate_email_summary.delay(email.id)
+        return Response({'status': 'Summary generation started'})
 
 
 class ExtractedLinkViewSet(viewsets.ReadOnlyModelViewSet):

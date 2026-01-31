@@ -89,3 +89,43 @@ def fetch_all_user_emails():
         fetch_emails_for_user.delay(user.id)
 
     logger.info(f'Queued email fetch for {users.count()} users')
+
+
+@shared_task
+def generate_email_summary(email_id: int) -> str:
+    """Generate AI summary with bullet points for an email."""
+    from bs4 import BeautifulSoup
+    from apps.emails.models import NewsletterEmail
+    from services.generation_service import GenerationService
+
+    try:
+        email = NewsletterEmail.objects.get(id=email_id)
+    except NewsletterEmail.DoesNotExist:
+        logger.error(f'Email {email_id} not found')
+        return "Email not found"
+
+    if not email.raw_html:
+        return "No content to summarize"
+
+    # Strip HTML to plain text
+    text = BeautifulSoup(email.raw_html, 'html.parser').get_text()
+
+    service = GenerationService()
+    prompt = f"""Summarize this newsletter email in 3-5 bullet points.
+Focus on the main topics and key announcements. Keep each bullet concise (1-2 sentences max).
+Format as a simple list with "•" bullet characters.
+
+Email content:
+{text[:8000]}"""
+
+    try:
+        summary = service._generate_text(prompt)
+        if summary:
+            email.ai_summary = summary
+            email.save(update_fields=['ai_summary'])
+            logger.info(f'Generated summary for email: {email.subject}')
+            return summary
+        return "Failed to generate summary"
+    except Exception as e:
+        logger.error(f'Error generating email summary: {e}')
+        return f"Error: {e}"

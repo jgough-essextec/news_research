@@ -29,6 +29,7 @@ class NewsletterEmail(TimeStampedModel):
     is_processed = models.BooleanField(default=False, db_index=True)
     processed_at = models.DateTimeField(null=True, blank=True)
     link_count = models.IntegerField(default=0)
+    ai_summary = models.TextField(blank=True, help_text="AI-generated summary of email contents")
 
     class Meta:
         verbose_name = 'newsletter email'
