@@ -34,19 +34,30 @@ export default function EmailDetailPage() {
   });
 
   const generateSummary = useMutation({
-    mutationFn: () => api.post(`/emails/${emailId}/generate_summary/`),
-    onSuccess: () => {
-      toast({
-        title: "Summary generation started",
-        description: "The AI summary will appear shortly",
-      });
-      // Poll for the summary after a delay
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["email", emailId] });
-      }, 5000);
+    mutationFn: () => api.post<{ status: string; ai_summary?: string; error?: string }>(
+      `/emails/${emailId}/generate_summary/`
+    ),
+    onSuccess: (data) => {
+      if (data.ai_summary) {
+        toast({
+          title: "Summary generated",
+          description: "The AI summary has been created",
+        });
+        // Immediately update the cache with the new summary
+        queryClient.setQueryData(["email", emailId], (old: NewsletterEmailDetail | undefined) => {
+          if (old) {
+            return { ...old, ai_summary: data.ai_summary };
+          }
+          return old;
+        });
+      }
     },
-    onError: () => {
-      toast({ title: "Failed to generate summary", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to generate summary",
+        description: error.message,
+        variant: "destructive"
+      });
     },
   });
 

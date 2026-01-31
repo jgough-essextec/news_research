@@ -215,14 +215,22 @@ export default function ClusterDetailPage() {
                       {article.excerpt}
                     </p>
                   </div>
-                  <a
-                    href={article.canonical_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-4 text-muted-foreground hover:text-foreground"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
+                  <div className="flex items-center gap-2 ml-4">
+                    <Link href={`/dashboard/articles/${article.id}`}>
+                      <Button size="sm" variant="outline">
+                        View Article
+                      </Button>
+                    </Link>
+                    <a
+                      href={article.canonical_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button size="sm" variant="ghost">
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  </div>
                 </div>
               ))}
             </div>

@@ -2,6 +2,7 @@
 Deduplication and clustering service using pgvector.
 """
 import logging
+from datetime import timedelta
 from typing import Optional
 
 import numpy as np
@@ -32,15 +33,20 @@ class DeduplicationService:
         """
         Find duplicate articles (similarity > duplicate_threshold).
         Returns list of (article, similarity_score) tuples.
+        Only compares against articles from the last 7 days.
         """
         if article.embedding is None:
             return []
 
-        # Find articles with high similarity
+        seven_days_ago = timezone.now() - timedelta(days=7)
+
+        # Find articles with high similarity (only from last 7 days)
         similar = Article.objects.exclude(
             id=article.id
         ).exclude(
             embedding__isnull=True
+        ).filter(
+            created_at__gte=seven_days_ago
         ).annotate(
             distance=CosineDistance('embedding', article.embedding)
         ).filter(
@@ -58,15 +64,21 @@ class DeduplicationService:
         """
         Find similar articles (similarity between cluster_threshold and duplicate_threshold).
         Returns list of (article, similarity_score) tuples.
+        Only compares against articles from the last 7 days.
         """
         if article.embedding is None:
             return []
 
+        seven_days_ago = timezone.now() - timedelta(days=7)
+
         # Find articles with medium-high similarity (same topic, not duplicates)
+        # Only from last 7 days
         similar = Article.objects.exclude(
             id=article.id
         ).exclude(
             embedding__isnull=True
+        ).filter(
+            created_at__gte=seven_days_ago
         ).annotate(
             distance=CosineDistance('embedding', article.embedding)
         ).filter(
@@ -123,12 +135,17 @@ class DeduplicationService:
         return cluster
 
     def _find_best_cluster(self, article: Article) -> Optional[TopicCluster]:
-        """Find the best matching cluster for an article."""
-        # Find clusters with similar centroid
+        """Find the best matching cluster for an article.
+        Only matches clusters that have had articles added in the last 7 days.
+        """
+        seven_days_ago = timezone.now() - timedelta(days=7)
+
+        # Find clusters with similar centroid (only recently active clusters)
         clusters = TopicCluster.objects.exclude(
             centroid_embedding__isnull=True
         ).filter(
-            is_active=True
+            is_active=True,
+            last_article_added_at__gte=seven_days_ago
         ).annotate(
             distance=CosineDistance('centroid_embedding', article.embedding)
         ).filter(
