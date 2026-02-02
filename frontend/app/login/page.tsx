@@ -1,6 +1,8 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,9 +13,32 @@ import {
 } from "@/components/ui/card";
 
 export default function LoginPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.push(callbackUrl);
+    }
+  }, [status, router, callbackUrl]);
+
   const handleGoogleLogin = () => {
-    signIn("google", { callbackUrl: "/dashboard" });
+    signIn("google", { callbackUrl });
   };
+
+  if (status === "loading") {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center p-6">
+        <div className="text-muted-foreground">Loading...</div>
+      </main>
+    );
+  }
+
+  if (status === "authenticated") {
+    return null;
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6">

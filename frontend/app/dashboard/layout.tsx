@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { useEffect } from "react";
 import {
   LayoutDashboard,
   Mail,
@@ -38,7 +39,26 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login?callbackUrl=" + encodeURIComponent(pathname));
+    }
+  }, [status, router, pathname]);
+
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return null;
+  }
 
   return (
     <div className="flex min-h-screen">

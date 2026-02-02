@@ -14,13 +14,8 @@ export default function Home() {
           posts with AI.
         </p>
         <div className="mt-10 flex items-center justify-center gap-x-6">
-          <Link href="/dashboard">
-            <Button size="lg">Get Started</Button>
-          </Link>
           <Link href="/login">
-            <Button variant="outline" size="lg">
-              Sign In
-            </Button>
+            <Button size="lg">Get Started</Button>
           </Link>
         </div>
       </div>
