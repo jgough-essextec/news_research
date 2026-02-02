@@ -56,6 +56,8 @@ Thumbs.db
 *.tfstate.*
 *.tfvars
 .terraform.lock.hcl
+tfplan
+*.tfplan
 
 # Docker
 docker-compose.override.yml
