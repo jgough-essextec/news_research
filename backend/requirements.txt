@@ -17,6 +17,7 @@ django-celery-results>=2.5,<3.0
 
 # Google Cloud
 google-cloud-aiplatform>=1.40,<2.0
+google-cloud-secret-manager>=2.18,<3.0
 google-auth>=2.25,<3.0
 google-auth-oauthlib>=1.2,<2.0
 google-api-python-client>=2.111,<3.0

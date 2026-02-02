@@ -1,5 +1,5 @@
 # Backend Dockerfile for Django API
-FROM python:3.12-slim
+FROM --platform=linux/amd64 python:3.12-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -29,8 +29,8 @@ RUN python manage.py collectstatic --noinput --settings=config.settings.local ||
 RUN useradd -m -s /bin/bash appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Expose port
-EXPOSE 8000
+# Expose port (Cloud Run uses PORT env var, defaults to 8080)
+EXPOSE 8080
 
-# Run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "4", "config.wsgi:application"]
+# Run gunicorn (uses PORT env var if set, defaults to 8080)
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 2 --threads 4 config.wsgi:application"]

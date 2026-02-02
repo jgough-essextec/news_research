@@ -1,0 +1,63 @@
+# AI News Aggregator - Terraform Variables Example
+# Copy this file to terraform.tfvars and fill in your values
+# IMPORTANT: terraform.tfvars is in .gitignore - do not commit it!
+
+# GCP Project Configuration
+# Replace with your actual GCP project ID
+project_id  = "your-gcp-project-id"
+region      = "us-central1"
+environment = "production"  # or "staging"
+
+# Database Configuration
+database_name     = "ai_news"
+database_user     = "ai_news_user"
+database_password = ""  # Generate with: openssl rand -base64 24
+
+# Cloud SQL Instance Tier
+# Options:
+#   - db-f1-micro (cheapest, ~$10/month, 256MB RAM, shared CPU)
+#   - db-g1-small (~$26/month, 1.7GB RAM, shared CPU)
+#   - db-custom-1-3840 (~$50/month, 3.75GB RAM, 1 vCPU)
+cloud_sql_tier = "db-f1-micro"
+
+# Docker Images
+# These will be built and pushed by Cloud Build
+# Format: {region}-docker.pkg.dev/{project_id}/{repo}/{image}:{tag}
+backend_image  = "us-central1-docker.pkg.dev/your-gcp-project-id/ai-news-images/backend:latest"
+worker_image   = "us-central1-docker.pkg.dev/your-gcp-project-id/ai-news-images/worker:latest"
+frontend_image = "us-central1-docker.pkg.dev/your-gcp-project-id/ai-news-images/frontend:latest"
+
+# Domain Configuration
+# Leave empty to use Cloud Run default URLs (*.run.app)
+# Set to your custom domains when ready (e.g., "api.yourdomain.com")
+backend_domain  = ""
+frontend_domain = ""
+
+# Secrets (Generate these before deployment)
+# IMPORTANT: Use environment variables or -var flags for production
+#
+# Generate secrets with these commands:
+#   Django Secret:    openssl rand -base64 50
+#   Encryption Key:   openssl rand -base64 32
+#   NextAuth Secret:  openssl rand -base64 32
+#
+# Or set via environment variables:
+#   export TF_VAR_django_secret_key="..."
+#   export TF_VAR_encryption_key="..."
+#   export TF_VAR_nextauth_secret="..."
+#   export TF_VAR_google_oauth_client_id="..."
+#   export TF_VAR_google_oauth_secret="..."
+#   export TF_VAR_google_api_key="..."
+
+django_secret_key = ""  # Required
+encryption_key    = ""  # Required
+nextauth_secret   = ""  # Required
+
+# Google OAuth Credentials
+# Get from: Google Cloud Console > APIs & Services > Credentials > OAuth 2.0 Client IDs
+google_oauth_client_id = ""  # Required
+google_oauth_secret    = ""  # Required
+
+# Google API Key for Gemini AI
+# Get from: Google AI Studio (https://aistudio.google.com/app/apikey)
+google_api_key = ""  # Required

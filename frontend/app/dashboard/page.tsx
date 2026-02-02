@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, FileText, Layers, PenTool, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import { api, Article, TopicCluster, PaginatedResponse } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function DashboardPage() {
@@ -26,8 +26,8 @@ export default function DashboardPage() {
   });
 
   const syncEmails = useMutation({
-    mutationFn: () => api.post("/emails/sync/"),
-    onSuccess: (data: any) => {
+    mutationFn: () => api.post<{ task_id?: string }>("/emails/sync/"),
+    onSuccess: (data) => {
       toast({
         title: "Email sync started",
         description: data.task_id ? `Task ID: ${data.task_id}` : "Syncing emails in background...",
@@ -131,14 +131,14 @@ export default function DashboardPage() {
 function RecentArticles() {
   const { data: articles, isLoading } = useQuery({
     queryKey: ["recent-articles"],
-    queryFn: () => api.get("/articles/?ordering=-created_at&limit=5"),
+    queryFn: () => api.get<PaginatedResponse<Article>>("/articles/?ordering=-created_at&limit=5"),
   });
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading...</div>;
 
   return (
     <div className="space-y-4">
-      {articles?.results?.slice(0, 5).map((article: any) => (
+      {articles?.results?.slice(0, 5).map((article) => (
         <div key={article.id} className="flex items-start gap-4">
           <div className="flex-1 space-y-1">
             <p className="text-sm font-medium leading-none line-clamp-1">
@@ -160,14 +160,14 @@ function RecentArticles() {
 function TopClusters() {
   const { data: clusters, isLoading } = useQuery({
     queryKey: ["top-clusters"],
-    queryFn: () => api.get("/clusters/?ordering=-priority_score&limit=5"),
+    queryFn: () => api.get<PaginatedResponse<TopicCluster>>("/clusters/?ordering=-priority_score&limit=5"),
   });
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading...</div>;
 
   return (
     <div className="space-y-4">
-      {clusters?.results?.slice(0, 5).map((cluster: any) => (
+      {clusters?.results?.slice(0, 5).map((cluster) => (
         <div key={cluster.id} className="flex items-center gap-4">
           <div className="flex-1 space-y-1">
             <p className="text-sm font-medium leading-none line-clamp-1">

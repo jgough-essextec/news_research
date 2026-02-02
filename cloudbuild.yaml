@@ -12,7 +12,7 @@ steps:
       - 'backend/Dockerfile'
       - 'backend'
 
-  # Build worker image
+  # Build worker image (with Playwright)
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-worker'
     args:
@@ -25,20 +25,38 @@ steps:
       - 'backend/Dockerfile.worker'
       - 'backend'
 
-  # Build frontend image
+  # Get backend URL for frontend build
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'get-backend-url'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Try to get existing backend URL, or use placeholder for first build
+        BACKEND_URL=$(gcloud run services describe ai-news-backend --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "")
+        if [ -z "$BACKEND_URL" ]; then
+          # First deployment - use placeholder, will need to rebuild after backend is deployed
+          BACKEND_URL="https://ai-news-backend-PLACEHOLDER.run.app"
+        fi
+        echo "$BACKEND_URL" > /workspace/backend_url.txt
+        echo "Backend URL: $BACKEND_URL"
+    waitFor: ['-']
+
+  # Build frontend image with API URL
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-frontend'
+    entrypoint: 'bash'
     args:
-      - 'build'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/frontend:${SHORT_SHA}'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/frontend:latest'
-      - '-f'
-      - 'frontend/Dockerfile'
-      - 'frontend'
-    env:
-      - 'NEXT_PUBLIC_API_URL=https://${_BACKEND_DOMAIN}/api'
+      - '-c'
+      - |
+        BACKEND_URL=$(cat /workspace/backend_url.txt)
+        docker build \
+          --build-arg NEXT_PUBLIC_API_URL="${BACKEND_URL}/api" \
+          -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/frontend:${SHORT_SHA} \
+          -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/frontend:latest \
+          -f frontend/Dockerfile \
+          frontend
+    waitFor: ['get-backend-url']
 
   # Push backend image
   - name: 'gcr.io/cloud-builders/docker'
@@ -101,6 +119,19 @@ steps:
       - '--allow-unauthenticated'
     waitFor: ['push-frontend']
 
+  # Update worker job image
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'update-worker-job'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud run jobs update ai-news-worker \
+          --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/worker:${SHORT_SHA} \
+          --region=${_REGION} || \
+        echo "Worker job update skipped (job may not exist yet - created by Terraform)"
+    waitFor: ['push-worker']
+
   # Run database migrations
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'migrate'
@@ -108,21 +139,53 @@ steps:
     args:
       - '-c'
       - |
+        # Update migration job with new image first
+        gcloud run jobs update ai-news-migrate \
+          --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/backend:${SHORT_SHA} \
+          --region=${_REGION} || true
+
+        # Execute the migration
         gcloud run jobs execute ai-news-migrate \
-          --region ${_REGION} \
+          --region=${_REGION} \
           --wait
     waitFor: ['deploy-backend']
+
+  # Update backend CORS with actual frontend URL (post-deployment)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'update-cors'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        FRONTEND_URL=$(gcloud run services describe ai-news-frontend --region=${_REGION} --format='value(status.url)')
+        BACKEND_URL=$(gcloud run services describe ai-news-backend --region=${_REGION} --format='value(status.url)')
+
+        echo "Updating CORS for backend..."
+        echo "Frontend URL: $FRONTEND_URL"
+
+        gcloud run services update ai-news-backend \
+          --region=${_REGION} \
+          --update-env-vars="CORS_ALLOWED_ORIGINS=${FRONTEND_URL},FRONTEND_URL=${FRONTEND_URL}"
+
+        echo "Updating frontend environment..."
+        gcloud run services update ai-news-frontend \
+          --region=${_REGION} \
+          --update-env-vars="NEXT_PUBLIC_API_URL=${BACKEND_URL}/api,BACKEND_URL=${BACKEND_URL},NEXTAUTH_URL=${FRONTEND_URL}"
+
+        echo "Deployment complete!"
+        echo "Backend URL: $BACKEND_URL"
+        echo "Frontend URL: $FRONTEND_URL"
+    waitFor: ['deploy-backend', 'deploy-frontend']
 
 substitutions:
   _REGION: 'us-central1'
   _ARTIFACT_REPO: 'ai-news-images'
-  _BACKEND_DOMAIN: 'backend.ai-news.example.com'
 
 options:
   logging: CLOUD_LOGGING_ONLY
   machineType: 'E2_HIGHCPU_8'
 
-timeout: '1800s'
+timeout: '2400s'
 
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/backend:${SHORT_SHA}'

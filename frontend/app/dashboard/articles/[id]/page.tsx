@@ -32,7 +32,7 @@ export default function ArticleDetailPage() {
   });
 
   const rescrape = useMutation({
-    mutationFn: () => api.post(`/articles/${articleId}/rescrape/`),
+    mutationFn: () => api.post<void>(`/articles/${articleId}/rescrape/`),
     onSuccess: () => {
       toast({ title: "Rescrape started", description: "Article is being re-scraped" });
       queryClient.invalidateQueries({ queryKey: ["article", articleId] });

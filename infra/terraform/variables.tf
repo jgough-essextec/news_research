@@ -55,6 +55,20 @@ variable "google_oauth_secret" {
   sensitive   = true
 }
 
+variable "google_api_key" {
+  description = "Google API key for Gemini AI"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "nextauth_secret" {
+  description = "NextAuth secret for session encryption"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "backend_image" {
   description = "Backend Docker image"
   type        = string

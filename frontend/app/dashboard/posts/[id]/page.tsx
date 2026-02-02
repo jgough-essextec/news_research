@@ -32,7 +32,7 @@ export default function PostDetailPage() {
   });
 
   const generateImage = useMutation({
-    mutationFn: () => api.post(`/posts/${postId}/generate_image/`),
+    mutationFn: () => api.post<void>(`/posts/${postId}/generate_image/`),
     onSuccess: () => {
       toast({ title: "Image generation started" });
       queryClient.invalidateQueries({ queryKey: ["post", postId] });
@@ -43,7 +43,7 @@ export default function PostDetailPage() {
   });
 
   const publishPost = useMutation({
-    mutationFn: () => api.post(`/posts/${postId}/publish/`),
+    mutationFn: () => api.post<void>(`/posts/${postId}/publish/`),
     onSuccess: () => {
       toast({ title: "Post published successfully" });
       queryClient.invalidateQueries({ queryKey: ["post", postId] });
@@ -54,7 +54,7 @@ export default function PostDetailPage() {
   });
 
   const archivePost = useMutation({
-    mutationFn: () => api.patch(`/posts/${postId}/`, { status: "archived" }),
+    mutationFn: () => api.patch<BlogPost>(`/posts/${postId}/`, { status: "archived" }),
     onSuccess: () => {
       toast({ title: "Post archived" });
       queryClient.invalidateQueries({ queryKey: ["post", postId] });

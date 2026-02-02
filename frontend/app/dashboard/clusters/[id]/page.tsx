@@ -38,7 +38,7 @@ export default function ClusterDetailPage() {
   });
 
   const generateSummary = useMutation({
-    mutationFn: () => api.post(`/clusters/${clusterId}/generate_summary/`),
+    mutationFn: () => api.post<void>(`/clusters/${clusterId}/generate_summary/`),
     onSuccess: () => {
       toast({ title: "Summary generation started" });
       queryClient.invalidateQueries({ queryKey: ["cluster", clusterId] });
@@ -49,8 +49,8 @@ export default function ClusterDetailPage() {
   });
 
   const generatePost = useMutation({
-    mutationFn: () => api.post(`/clusters/${clusterId}/generate_post/`),
-    onSuccess: (data: { post_id: number }) => {
+    mutationFn: () => api.post<{ post_id: number }>(`/clusters/${clusterId}/generate_post/`),
+    onSuccess: (data) => {
       toast({ title: "Blog post generation started" });
       if (data?.post_id) {
         router.push(`/dashboard/posts/${data.post_id}`);

@@ -7,10 +7,8 @@ resource "google_sql_database_instance" "main" {
     tier              = var.tier
     availability_type = var.availability_type
 
-    database_flags {
-      name  = "cloudsql.enable_pgvector"
-      value = "on"
-    }
+    # pgvector extension is enabled after database creation
+    # via SQL command: CREATE EXTENSION IF NOT EXISTS vector;
 
     ip_configuration {
       ipv4_enabled    = false
@@ -53,19 +51,11 @@ resource "google_sql_user" "main" {
   password = var.database_password
 }
 
-# Enable pgvector extension
-resource "null_resource" "enable_pgvector" {
-  provisioner "local-exec" {
-    command = <<-EOT
-      gcloud sql connect ${google_sql_database_instance.main.name} \
-        --database=${var.database_name} \
-        --user=${var.database_user} \
-        --quiet \
-        << EOF
-CREATE EXTENSION IF NOT EXISTS vector;
-EOF
-    EOT
-  }
-
-  depends_on = [google_sql_database.main, google_sql_user.main]
-}
+# Note: pgvector extension should be enabled via Django migrations
+# or manually via Cloud SQL console. The local-exec provisioner
+# has been removed due to gcloud PATH and connectivity requirements.
+#
+# To enable pgvector manually:
+# 1. Go to Cloud SQL console
+# 2. Connect to the database
+# 3. Run: CREATE EXTENSION IF NOT EXISTS vector;

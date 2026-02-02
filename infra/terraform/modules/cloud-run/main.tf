@@ -12,9 +12,12 @@ resource "google_cloud_run_v2_service" "main" {
       max_instance_count = var.max_instances
     }
 
-    vpc_access {
-      connector = var.vpc_connector
-      egress    = "ALL_TRAFFIC"
+    dynamic "vpc_access" {
+      for_each = var.vpc_connector != "" ? [1] : []
+      content {
+        connector = var.vpc_connector
+        egress    = "ALL_TRAFFIC"
+      }
     }
 
     containers {
@@ -91,13 +94,20 @@ resource "google_cloud_run_v2_job" "main" {
     template {
       service_account = var.service_account_email
 
-      vpc_access {
-        connector = var.vpc_connector
-        egress    = "ALL_TRAFFIC"
+      dynamic "vpc_access" {
+        for_each = var.vpc_connector != "" ? [1] : []
+        content {
+          connector = var.vpc_connector
+          egress    = "ALL_TRAFFIC"
+        }
       }
 
+      max_retries = 3
+
       containers {
-        image = var.image
+        image   = var.image
+        command = length(var.command) > 0 ? var.command : null
+        args    = length(var.args) > 0 ? var.args : null
 
         resources {
           limits = {

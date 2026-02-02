@@ -34,7 +34,8 @@ if os.environ.get('USE_SECRET_MANAGER', 'false').lower() == 'true':
     ENCRYPTION_KEY = get_secret('encryption-key')
 
 # ALLOWED_HOSTS from environment
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+_allowed_hosts = os.environ.get('ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(',') if h.strip()] if _allowed_hosts else ['*']
 
 # Database - Cloud SQL connection
 if os.environ.get('USE_CLOUD_SQL_AUTH_PROXY', 'false').lower() == 'true':
@@ -44,8 +45,17 @@ if os.environ.get('USE_CLOUD_SQL_AUTH_PROXY', 'false').lower() == 'true':
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # CORS - restrict to specific origins
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
+_cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if _cors_origins == '*':
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOWED_ORIGINS = []
+elif _cors_origins:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(',') if o.strip()]
+else:
+    # No CORS origins specified - allow all for development/migrations
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOWED_ORIGINS = []
 
 # Logging for Cloud Run
 LOGGING['handlers']['console']['formatter'] = 'verbose'  # noqa: F405

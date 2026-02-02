@@ -67,3 +67,15 @@ variable "allow_unauthenticated" {
   type    = bool
   default = true
 }
+
+variable "command" {
+  description = "Command to run in the container"
+  type        = list(string)
+  default     = []
+}
+
+variable "args" {
+  description = "Arguments to pass to the container command"
+  type        = list(string)
+  default     = []
+}

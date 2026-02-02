@@ -24,7 +24,7 @@ export default function ClustersPage() {
 
   const generateSummary = useMutation({
     mutationFn: (clusterId: number) =>
-      api.post(`/clusters/${clusterId}/generate_summary/`),
+      api.post<void>(`/clusters/${clusterId}/generate_summary/`),
     onSuccess: () => {
       toast({ title: "Summary generation started" });
       queryClient.invalidateQueries({ queryKey: ["clusters"] });
