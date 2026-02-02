@@ -33,13 +33,13 @@ steps:
       - '-c'
       - |
         # Try to get existing backend URL, or use placeholder for first build
-        BACKEND_URL=$(gcloud run services describe ai-news-backend --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "")
-        if [ -z "$BACKEND_URL" ]; then
+        BACKEND_URL=$$(gcloud run services describe ai-news-backend --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "")
+        if [ -z "$$BACKEND_URL" ]; then
           # First deployment - use placeholder, will need to rebuild after backend is deployed
           BACKEND_URL="https://ai-news-backend-PLACEHOLDER.run.app"
         fi
-        echo "$BACKEND_URL" > /workspace/backend_url.txt
-        echo "Backend URL: $BACKEND_URL"
+        echo "$$BACKEND_URL" > /workspace/backend_url.txt
+        echo "Backend URL: $$BACKEND_URL"
     waitFor: ['-']
 
   # Build frontend image with API URL
@@ -49,9 +49,9 @@ steps:
     args:
       - '-c'
       - |
-        BACKEND_URL=$(cat /workspace/backend_url.txt)
+        BACKEND_URL=$$(cat /workspace/backend_url.txt)
         docker build \
-          --build-arg NEXT_PUBLIC_API_URL="${BACKEND_URL}/api" \
+          --build-arg NEXT_PUBLIC_API_URL="$${BACKEND_URL}/api" \
           -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/frontend:${SHORT_SHA} \
           -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/frontend:latest \
           -f frontend/Dockerfile \
@@ -157,24 +157,24 @@ steps:
     args:
       - '-c'
       - |
-        FRONTEND_URL=$(gcloud run services describe ai-news-frontend --region=${_REGION} --format='value(status.url)')
-        BACKEND_URL=$(gcloud run services describe ai-news-backend --region=${_REGION} --format='value(status.url)')
+        FRONTEND_URL=$$(gcloud run services describe ai-news-frontend --region=${_REGION} --format='value(status.url)')
+        BACKEND_URL=$$(gcloud run services describe ai-news-backend --region=${_REGION} --format='value(status.url)')
 
         echo "Updating CORS for backend..."
-        echo "Frontend URL: $FRONTEND_URL"
+        echo "Frontend URL: $$FRONTEND_URL"
 
         gcloud run services update ai-news-backend \
           --region=${_REGION} \
-          --update-env-vars="CORS_ALLOWED_ORIGINS=${FRONTEND_URL},FRONTEND_URL=${FRONTEND_URL}"
+          --update-env-vars="CORS_ALLOWED_ORIGINS=$${FRONTEND_URL},FRONTEND_URL=$${FRONTEND_URL}"
 
         echo "Updating frontend environment..."
         gcloud run services update ai-news-frontend \
           --region=${_REGION} \
-          --update-env-vars="NEXT_PUBLIC_API_URL=${BACKEND_URL}/api,BACKEND_URL=${BACKEND_URL},NEXTAUTH_URL=${FRONTEND_URL}"
+          --update-env-vars="NEXT_PUBLIC_API_URL=$${BACKEND_URL}/api,BACKEND_URL=$${BACKEND_URL},NEXTAUTH_URL=$${FRONTEND_URL}"
 
         echo "Deployment complete!"
-        echo "Backend URL: $BACKEND_URL"
-        echo "Frontend URL: $FRONTEND_URL"
+        echo "Backend URL: $$BACKEND_URL"
+        echo "Frontend URL: $$FRONTEND_URL"
     waitFor: ['deploy-backend', 'deploy-frontend']
 
 substitutions:
